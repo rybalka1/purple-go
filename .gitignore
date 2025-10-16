@@ -1,1 +1,5 @@
 /4-order-api/.env
+/.idea
+/.vscode
+.env
+GEMINI.md
