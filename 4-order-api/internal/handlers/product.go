@@ -17,6 +17,15 @@ func CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate required fields
+	fields := map[string]string{
+		"Name":        product.Name,
+		"Description": product.Description,
+	}
+	if !utils.ValidateFields(fields, []string{"Name", "Description"}, w) {
+		return
+	}
+
 	if err := database.DB.Create(&product).Error; err != nil {
 		utils.Error(w, http.StatusInternalServerError, "Failed to create product")
 		return
@@ -48,7 +57,19 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database.DB.Save(&product)
+	// Validate required fields
+	fields := map[string]string{
+		"Name":        product.Name,
+		"Description": product.Description,
+	}
+	if !utils.ValidateFields(fields, []string{"Name", "Description"}, w) {
+		return
+	}
+
+	if err := database.DB.Save(&product).Error; err != nil {
+		utils.Error(w, http.StatusInternalServerError, "Failed to update product")
+		return
+	}
 	utils.JSON(w, http.StatusOK, product)
 }
 
@@ -60,6 +81,9 @@ func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database.DB.Delete(&product)
+	if err := database.DB.Delete(&product).Error; err != nil {
+		utils.Error(w, http.StatusInternalServerError, "Failed to delete product")
+		return
+	}
 	utils.JSON(w, http.StatusOK, map[string]string{"result": "success"})
 }
