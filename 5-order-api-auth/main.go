@@ -28,6 +28,26 @@ type TokenResponse struct {
 	Token string `json:"token"`
 }
 
+// Product struct
+type Product struct {
+	ID    int     `json:"id"`
+	Name  string  `json:"name"`
+	Price float64 `json:"price"`
+}
+
+// BuyRequest struct
+type BuyRequest struct {
+	ProductID int `json:"product_id" binding:"required"`
+	Quantity  int `json:"quantity" binding:"required"`
+}
+
+// In-memory product list
+var products = []Product{
+	{ID: 1, Name: "Go Programming Book", Price: 49.99},
+	{ID: 2, Name: "Sticker Pack", Price: 5.99},
+	{ID: 3, Name: "Go Gopher Plush Toy", Price: 19.99},
+}
+
 // Временное хранилище для сессий и кодов (в реальном приложении использовалась бы база данных или Redis)
 var sessions = make(map[string]struct {
 	Phone string
@@ -109,7 +129,6 @@ func SendCodeHandler(c *gin.Context) {
 	// 4. Отправляем SMS (имитация)
 	fmt.Printf("--- SMS SENT to %s: Code is %d (Session: %s) ---\n", req.Phone, code, sessionID)
 
-
 	// 5. Возвращаем sessionId
 	c.JSON(http.StatusOK, SessionResponse{SessionID: sessionID})
 }
@@ -152,6 +171,42 @@ func ProtectedHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Welcome, user with phone: %s", phone)})
 }
 
+// BuyProductHandler handles the logic for purchasing a product
+func BuyProductHandler(c *gin.Context) {
+	var req BuyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	phone, _ := c.Get("phone")
+
+	// Find the product
+	var product Product
+	found := false
+	for _, p := range products {
+		if p.ID == req.ProductID {
+			product = p
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
+		return
+	}
+
+	// "Process" the purchase
+	totalPrice := product.Price * float64(req.Quantity)
+	fmt.Printf("--- PURCHASE by %s: %d x %s for $%.2f ---\n", phone, req.Quantity, product.Name, totalPrice)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     fmt.Sprintf("Successfully purchased %d of %s", req.Quantity, product.Name),
+		"total_price": totalPrice,
+	})
+}
+
 func main() {
 	// Устанавливаем режим Gin
 	gin.SetMode(gin.ReleaseMode)
@@ -169,6 +224,7 @@ func main() {
 	protected.Use(AuthMiddleware())
 	{
 		protected.GET("/protected", ProtectedHandler)
+		protected.POST("/buy", BuyProductHandler)
 	}
 
 	fmt.Println("Server is running on :8080")
